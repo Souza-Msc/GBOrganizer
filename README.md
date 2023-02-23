@@ -18,6 +18,7 @@ You can also set a minimum length to further specify your sorting. To do this, u
 
 ```
 python GBOrganizer.py --input_file sequence.gb --split_file Yes --lenght 1000
+```
 
 ## Contact me
 
