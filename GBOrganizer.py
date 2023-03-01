@@ -196,7 +196,7 @@ def GBOrganizer(param):
                         sqn += str(data_dict[str(df_temp.loc[i,'Acession'])].seq[int(start):int(finish)])
                     sqn = sqn.replace('$','')
 
-                file.write('>'+df_temp.loc[i,'Acession']+'_'+(df_temp.loc[i,'Organism'].replace(' ','_'))+'_'+(df_temp.loc[i,'Marker'].replace(' ','_'))+'\n'+str(sqn)+'\n')
+                file.write('>'+df_temp.loc[i,'Acession']+'_'+(df_temp.loc[i,'Organism'].replace(' ','_'))+'\n'+str(sqn)+'\n')
             file.close()
         #     tamanho += int(len(df_temp))
 
