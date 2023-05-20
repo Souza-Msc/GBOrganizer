@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.10
 
-#Last Updated: 23 Feb 2023
+#Last Updated: 20 may 2023
+#Version: 2.0
 #Author: Pedro Mendes de Souza; pedromsouza0@gmail.com
 #Usage: python GBOrganizer.py
 #Options: python GBOrganizer.py --help
@@ -16,7 +17,7 @@ import pandas as pd
 # Guide Msg
 
 def guide_msg():
-    return "\n\nExemple of usage: pyhton GBOrganizer.py -i sequence.gb -sf Yes -l 1000"
+    return "\n\nExemple of usage: pyhton GBOrganizer.py -i sequence.gb -sf Yes -l 1000 -he Habitat"
 
 # Author info
 
@@ -51,9 +52,11 @@ def get_parameters():
     optional_arg_group.add_argument('-author', action='store_true',
 	help=' \n Print author contact information \n\n')
 
-    optional_arg_group.add_argument('--split_file','-sf', action='store', default= "No", help='\nPut Yes if you want to divide different genes sequences into separate files.\n')
+    optional_arg_group.add_argument('--split_file','-sf', action='store', default= "No", help='\nPut Yes if you want to divide different genes sequences into separate files.\n\n')
 
-    optional_arg_group.add_argument('--lenght', '-l', action='store', default='0', help='\nUser-difined minimum sequence lenght')
+    optional_arg_group.add_argument('--lenght', '-l', action='store', default='0', help='\nUser-difined minimum sequence lenght. Default: 0\n\n')
+
+    optional_arg_group.add_argument('--header', '-he', action='store', default='N', help='\nUser-difined additional information to the sequence header on fasta file. Default: None\n\n')
 
 
     if len(sys.argv[1:]) == 0:
@@ -76,17 +79,19 @@ def get_parameters():
 def GBOrganizer(param):
     data = list(SeqIO.parse(param.input_file, 'gb'))
     data_dict = SeqIO.to_dict(SeqIO.parse(param.input_file, 'gb'))
-
-    # Table
+    
 
     uni =[]
     more = []
 
     for i in data:
-        if i.features[0].location != i.features[1].location:
-            more.append(i)
+        if len(i.features) > 1:
+        	if i.features[0].location != i.features[1].location:
+        		more.append(i)
+        	else:
+        		uni.append(i)
         else:
-            uni.append(i)
+        	uni.append(i)
 
     acession = []
     organism = []
@@ -95,9 +100,15 @@ def GBOrganizer(param):
     journal = []
     authors = []
     location = []
-
+    geo_loc = []
+    geo_acession = []
+    habitat = []
+    habitat_acession = []
+    titles = []
+	
     for i in data:
         for x in i.features:
+            #print(x, '\n\n', '_______','\n')
             if x.qualifiers.get('product'):
                 acession.append(i.id)
                 product.append(str(x.qualifiers.get('product')).replace("['",'').replace("']",''))
@@ -106,6 +117,23 @@ def GBOrganizer(param):
                 journal.append(i.annotations['references'][0].journal)
                 authors.append(i.annotations['references'][0].authors)
                 location.append(str(x.location).replace("](+)",'').replace('[',"").replace("<",'').replace('>','').replace('](-)','').replace('join{','').replace('}',''))
+                titles.append(i.annotations['references'][0].title)
+            
+            if x.qualifiers.get('country'):
+                geo_loc.append(str(x.qualifiers.get('country')).replace("['",'').replace("']",''))
+                geo_acession.append(i.id)
+            else:
+                if i.id not in geo_acession:
+                    geo_loc.append('')
+                    geo_acession.append(i.id)
+
+            if x.qualifiers.get('isolation_source'):
+                habitat.append(str(x.qualifiers.get('isolation_source')).replace("['",'').replace("']",''))
+                habitat_acession.append(i.id)
+            else:
+                if i.id not in habitat_acession:
+                    habitat.append('')
+                    habitat_acession.append(i.id)
 
     new_nm = []
 
@@ -116,13 +144,27 @@ def GBOrganizer(param):
             new_nm.append('large subunit ribosomal RNA')
         else:
             new_nm.append(nm)
-            # print(nm)
+            #print(nm)
+
     product = new_nm
 
+    pre_df_2 = [geo_loc,geo_acession]
 
-    pre_df = [acession, organism, product, leng, journal, authors, location]
+    df2 = pd.DataFrame(pre_df_2).transpose()
+    df2.columns = ['Country','Acession']
+
+    pre_df_3 = [habitat,habitat_acession]
+
+    df3 = pd.DataFrame(pre_df_3).transpose()
+    df3.columns = ['Habitat','Acession']
+
+    pre_df = [acession, organism, product, leng, titles, journal, authors, location]
     df = pd.DataFrame(pre_df).transpose()
-    df.columns = ['Acession', 'Organism', 'Marker', 'Lenght', 'Journal', 'Authors','Location']
+    df.columns = ['Acession', 'Organism', 'Marker', 'Lenght', 'Title', 'Journal', 'Authors','Location']
+
+
+    # for i in data['Acession']:
+        
 
     new_len = []
 
@@ -147,6 +189,9 @@ def GBOrganizer(param):
     df = df.drop_duplicates()
     df = df.reset_index()
 
+    df = pd.merge(df, df2, on = 'Acession', how= 'inner')
+    df = pd.merge(df, df3, on = 'Acession', how= 'inner')
+
     exp = int(param.lenght)
     
     if exp != 0:
@@ -163,8 +208,11 @@ def GBOrganizer(param):
 
         print(f'\nOf the {len_in} sequence collected from the .gb file only {len_out} have more then {exp} nucleotides.\n')
 
+    else:
+         
+         len_in = len(df)
 
-    df.to_excel('GB_Organized.xlsx')
+         print(f'\n{len_in} sequence collected from {len(data)} deposits in .gb file.\n')
 
     if param.split_file == "Yes":
         
@@ -196,10 +244,17 @@ def GBOrganizer(param):
                         sqn += str(data_dict[str(df_temp.loc[i,'Acession'])].seq[int(start):int(finish)])
                     sqn = sqn.replace('$','')
 
-                file.write('>'+df_temp.loc[i,'Acession']+'_'+(df_temp.loc[i,'Organism'].replace(' ','_'))+'\n'+str(sqn)+'\n')
+                if param.header == 'N':
+                    file.write('>'+df_temp.loc[i,'Acession']+'_'+(df_temp.loc[i,'Organism'].replace(' ','_'))+'\n'+str(sqn)+'\n')
+                else:
+                     file.write('>'+df_temp.loc[i,'Acession']+'_'+(df_temp.loc[i,'Organism'].replace(' ','_'))+'_'+(df_temp.loc[i,str(param.header)].replace(' ','_'))+'\n'+str(sqn)+'\n')
             file.close()
         #     tamanho += int(len(df_temp))
 
+    df = df.drop("Location",axis="columns")
+    df = df.drop("index",axis="columns")
+
+    df.to_excel('GB_Organized.xlsx')
 
 def run():
     param = get_parameters()
