@@ -56,7 +56,7 @@ def get_parameters():
 
     optional_arg_group.add_argument('--lenght', '-l', action='store', default='0', help='\nUser-difined minimum sequence lenght. Default: 0\n\n')
 
-    optional_arg_group.add_argument('--header', '-he', action='store', default='N', help='\nUser-difined additional information to the sequence header on fasta file. Default: None\n\n')
+    optional_arg_group.add_argument('--header', '-he', action='store', default='isolation_source', help='\nUser-difined additional information to the sequence header on fasta file. Default: isolation_source\n\n')
 
 
     if len(sys.argv[1:]) == 0:
@@ -127,8 +127,8 @@ def GBOrganizer(param):
                     geo_loc.append('')
                     geo_acession.append(i.id)
 
-            if x.qualifiers.get('isolation_source'):
-                habitat.append(str(x.qualifiers.get('isolation_source')).replace("['",'').replace("']",''))
+            if x.qualifiers.get(str(param.header)):
+                habitat.append(str(x.qualifiers.get(str(param.header))).replace("['",'').replace("']",''))
                 habitat_acession.append(i.id)
             else:
                 if i.id not in habitat_acession:
@@ -156,7 +156,7 @@ def GBOrganizer(param):
     pre_df_3 = [habitat,habitat_acession]
 
     df3 = pd.DataFrame(pre_df_3).transpose()
-    df3.columns = ['Habitat','Acession']
+    df3.columns = [f'Extra ({param.header})','Acession']
 
     pre_df = [acession, organism, product, leng, titles, journal, authors, location]
     df = pd.DataFrame(pre_df).transpose()
@@ -247,7 +247,7 @@ def GBOrganizer(param):
                 if param.header == 'N':
                     file.write('>'+df_temp.loc[i,'Acession']+'_'+(df_temp.loc[i,'Organism'].replace(' ','_'))+'\n'+str(sqn)+'\n')
                 else:
-                     file.write('>'+df_temp.loc[i,'Acession']+'_'+(df_temp.loc[i,'Organism'].replace(' ','_'))+'_'+(df_temp.loc[i,str(param.header)].replace(' ','_'))+'\n'+str(sqn)+'\n')
+                     file.write('>'+df_temp.loc[i,'Acession']+'_'+(df_temp.loc[i,'Organism'].replace(' ','_'))+'_'+(df_temp.loc[i,f'Extra ({param.header})'].replace(' ','_'))+'\n'+str(sqn)+'\n')
             file.close()
         #     tamanho += int(len(df_temp))
 
