@@ -17,7 +17,7 @@ import pandas as pd
 # Guide Msg
 
 def guide_msg():
-    return "\n\nExemple of usage: pyhton GBOrganizer.py -i sequence.gb -sf Yes -l 1000 -he Habitat"
+    return "\n\nExemple of usage: python GBOrganizer.py -i sequence.gb -sf Yes -l 1000 -he Habitat"
 
 # Author info
 
