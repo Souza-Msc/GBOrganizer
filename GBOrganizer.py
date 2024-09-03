@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.10
 
 #Last Updated: 20 may 2023
-#Version: 2.0
+#Version: 6.0
 #Author: Pedro Mendes de Souza; pedromsouza0@gmail.com
 #Usage: python GBOrganizer.py
 #Options: python GBOrganizer.py --help
@@ -17,7 +17,7 @@ import pandas as pd
 # Guide Msg
 
 def guide_msg():
-    return "\n\nExemple of usage: python GBOrganizer.py -i sequence.gb -sf Yes -l 1000 -he Habitat"
+    return "\n\nExemple of usage: pyhton GBOrganizer.py -i sequence.gb -sf Yes -l 1000 -he Habitat"
 
 # Author info
 
@@ -80,6 +80,7 @@ def GBOrganizer(param):
     data = list(SeqIO.parse(param.input_file, 'gb'))
     data_dict = SeqIO.to_dict(SeqIO.parse(param.input_file, 'gb'))
     
+    print('\nLeitura do Aqruivo completa. \n')
 
     uni =[]
     more = []
@@ -106,19 +107,40 @@ def GBOrganizer(param):
     habitat_acession = []
     titles = []
 	
+    reg = 0
+    gen = 0
+    len_data = len(data)
+
+    print('Preaparacao do ambinete completa.\n')
+    print('Inicio da Leitura dos arquivos:\n')
+
     for i in data:
+        reg += 1
         for x in i.features:
+            gen += 1
             #print(x, '\n\n', '_______','\n')
             if x.qualifiers.get('product'):
                 acession.append(i.id)
                 product.append(str(x.qualifiers.get('product')).replace("['",'').replace("']",''))
                 leng.append(str(x.location).replace("](+)",'').replace('[',"").replace("<",'').replace('>','').replace('](-)','').replace('join{','').replace('}',''))
                 organism.append(i.annotations['organism'])
-                journal.append(i.annotations['references'][0].journal)
-                authors.append(i.annotations['references'][0].authors)
-                location.append(str(x.location).replace("](+)",'').replace('[',"").replace("<",'').replace('>','').replace('](-)','').replace('join{','').replace('}',''))
-                titles.append(i.annotations['references'][0].title)
-            
+                try:
+                    journal.append(i.annotations['references'][0].journal)
+                except:
+                    journal.append('')
+                try:
+                    authors.append(i.annotations['references'][0].authors)
+                except:
+                    authors.append('')
+                try:                
+                   location.append(str(x.location).replace("](+)",'').replace('[',"").replace("<",'').replace('>','').replace('](-)','').replace('join{','').replace('}',''))
+                except:
+                    location.append('')
+                try:
+                    titles.append(i.annotations['references'][0].title)
+                except:
+                    titles.append('')
+                    
             if x.qualifiers.get('country'):
                 geo_loc.append(str(x.qualifiers.get('country')).replace("['",'').replace("']",''))
                 geo_acession.append(i.id)
@@ -134,6 +156,8 @@ def GBOrganizer(param):
                 if i.id not in habitat_acession:
                     habitat.append('')
                     habitat_acession.append(i.id)
+        print(f"Sequencia {reg} de {len_data}, ID = {i.id}")
+        gen = 0
 
     new_nm = []
 
@@ -148,6 +172,8 @@ def GBOrganizer(param):
 
     product = new_nm
 
+
+    print('\nCriando tabela de registro...')
     pre_df_2 = [geo_loc,geo_acession]
 
     df2 = pd.DataFrame(pre_df_2).transpose()
@@ -214,7 +240,10 @@ def GBOrganizer(param):
 
          print(f'\n{len_in} sequence collected from {len(data)} deposits in .gb file.\n')
 
+
     if param.split_file == "Yes":
+
+        print('\nCriando arquivos FASTA...')
         
         #Fasta
         path = os.getcwd()
@@ -226,7 +255,8 @@ def GBOrganizer(param):
         # print(markers)
 
         for marker in markers:
-            file = open(str('Fasta/'+marker+'.fasta'),'w')
+            f_name = str((marker.replace('/','_'))+'.fasta')
+            file = open(str('Fasta/'+(marker.replace('/','_'))+'.fasta'),'w')
             df_temp = df[df.Marker == marker]
             df_temp = df_temp.reset_index()
             for i in range(len(df_temp)):
@@ -234,20 +264,33 @@ def GBOrganizer(param):
                 if df_temp.loc[i,'Location'].count(':') == 1: 
 
                     start, finish =df_temp.loc[i,'Location'].split(':')
-                    sqn = data_dict[str(df_temp.loc[i,'Acession'])].seq[int(start):int(finish)]
+                    try:
+                        sqn = data_dict[str(df_temp.loc[i,'Acession'])].seq[int(start):int(finish)]
+                    except:
+                        acess_numb_erro = str(df_temp.loc[i,'Acession'])
+                        print(f'\nErro: Sequência Vazia. Conferir número de acesso {acess_numb_erro}.\n')
 
                 else:
                     locs = df_temp.loc[i,'Location'].split(',')
                     sqn = '$'
                     for l in locs:
                         start, finish = l.split(':')
-                        sqn += str(data_dict[str(df_temp.loc[i,'Acession'])].seq[int(start):int(finish)])
+                        try:
+                            sqn += str(data_dict[str(df_temp.loc[i,'Acession'])].seq[int(start):int(finish)])
+                        except:
+                            acess_numb_erro = str(df_temp.loc[i,'Acession'])
+                            print(f'\nErro: Sequência Vazia. Conferir número de acesso {acess_numb_erro} no arquivo {f_name}.')
+
                     sqn = sqn.replace('$','')
 
                 if param.header == 'N':
                     file.write('>'+df_temp.loc[i,'Acession']+'_'+(df_temp.loc[i,'Organism'].replace(' ','_'))+'\n'+str(sqn)+'\n')
                 else:
-                     file.write('>'+df_temp.loc[i,'Acession']+'_'+(df_temp.loc[i,'Organism'].replace(' ','_'))+'_'+(df_temp.loc[i,f'Extra ({param.header})'].replace(' ','_'))+'\n'+str(sqn)+'\n')
+                    try:
+                        file.write('>'+df_temp.loc[i,'Acession']+'_'+(df_temp.loc[i,'Organism'].replace(' ','_'))+'_'+(df_temp.loc[i,f'Extra ({param.header})'].replace(' ','_'))+'\n'+str(sqn)+'\n')
+                    except:
+                        acess_numb_erro = str(df_temp.loc[i,'Acession'])
+                        file.write(f'Erro: Conferir sequência {acess_numb_erro}')
             file.close()
         #     tamanho += int(len(df_temp))
 
@@ -255,6 +298,8 @@ def GBOrganizer(param):
     df = df.drop("index",axis="columns")
 
     df.to_excel('GB_Organized.xlsx')
+
+    print('\n\nSeparacao finalizada! Lembre de nao surtar!\n')
 
 def run():
     param = get_parameters()
